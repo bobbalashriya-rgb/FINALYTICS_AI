@@ -1,0 +1,129 @@
+{
+  "resolve_company": {
+    "name": "resolve_company",
+    "description": "Find an Indian listed company by name, ticker or partial match. Returns candidates with their MarketPing slug \u2014 call this FIRST unless you already hold a slug, because every other company tool takes one. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Company name, NSE/BSE symbol, or part of one"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "company_snapshot": {
+    "name": "company_snapshot",
+    "description": "Latest fundamentals and valuation for one company: price, market cap, P/E, P/B, TTM revenue and profit, growth, ROCE/ROE and debt ratios. Use for 'how is X doing', 'what does X trade at', or as the numeric backdrop before reading filings. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "company": {
+          "type": "string",
+          "description": "Company slug (preferred), NSE symbol, or UUID"
+        }
+      },
+      "required": [
+        "company"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "search_filings": {
+    "name": "search_filings",
+    "description": "Full-text search across every page MarketPing holds \u2014 annual reports, earnings-call transcripts, investor presentations. Returns {doc_id, page, snippet} hits to follow up with read_pages. SNIPPETS ARE KEYWORD WINDOWS, NOT FACTS: never state a figure from a snippet, open the page and take it from there. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "What to look for, in plain words"
+        },
+        "company": {
+          "type": "string",
+          "description": "Optional \u2014 restrict the search to one company"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "list_documents": {
+    "name": "list_documents",
+    "description": "The documents MarketPing holds for a company \u2014 annual reports, earnings-call transcripts, investor presentations, results \u2014 newest first, each with a doc_id. A capped list is marked as truncated: never read one as the whole holding. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "company": {
+          "type": "string",
+          "description": "Company slug, NSE symbol, or UUID"
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": [
+            "annual_report",
+            "earnings_call_transcript",
+            "investor_presentation",
+            "announcement",
+            "financial_results",
+            "brsr"
+          ],
+          "description": "Optional filter"
+        }
+      },
+      "required": [
+        "company"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "doc_contents": {
+    "name": "doc_contents",
+    "description": "A document's table of contents: section titles, one-line summaries and page ranges. Read this BEFORE read_pages so you open the right four pages instead of guessing \u2014 annual reports run to 300+ pages. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "description": "Document id from list_documents or search_filings"
+        }
+      },
+      "required": [
+        "doc_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "read_pages": {
+    "name": "read_pages",
+    "description": "The actual text of a page range (max 12 pages). This is the ONLY source you may quote a document from \u2014 cite as {doc_id, page, verbatim quote}, and the quote must really appear on that page. Factual data only \u2014 MarketPing publishes no buy/sell recommendations, no price targets and no IPO grey-market premium.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "description": "Document id"
+        },
+        "page_from": {
+          "type": "integer",
+          "description": "First page (1-based)"
+        },
+        "page_to": {
+          "type": "integer",
+          "description": "Last page; at most 12 pages per call"
+        }
+      },
+      "required": [
+        "doc_id",
+        "page_from"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -19,6 +19,7 @@ from .models import (
     SavedCompany,
     ResearchActivity,
 )
+from .apps import DEFAULT_PRINCIPLES
 from .serializers import (
     InvestmentPrincipleSerializer,
     PrincipleUpdateSerializer,
@@ -64,9 +65,15 @@ class CompanyDetailView(APIView):
 class PrincipleListView(APIView):
     """Retrieves all configured investment principles."""
     def get(self, request):
-        principles = InvestmentPrinciple.objects.all()
-        serializer = InvestmentPrincipleSerializer(principles, many=True)
-        return Response(serializer.data)
+        try:
+            principles = list(InvestmentPrinciple.objects.all())
+            if not principles:
+                return Response(DEFAULT_PRINCIPLES)
+            serializer = InvestmentPrincipleSerializer(principles, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.warning(f"Failed to fetch principles from DB: {e}. Falling back to default principles.")
+            return Response(DEFAULT_PRINCIPLES)
 
 class PrincipleDetailView(APIView):
     """Updates the evaluation threshold for a specific investment principle."""
@@ -91,7 +98,14 @@ class AnalyzeView(APIView):
         company_data = fetch_company_data(ticker)
         metrics_result = calculate_metrics(company_data)
         metrics_dict = metrics_result.metrics.model_dump()
-        principles = list(InvestmentPrinciple.objects.all())
+        try:
+            principles = list(InvestmentPrinciple.objects.all())
+            if not principles:
+                principles = DEFAULT_PRINCIPLES
+        except Exception as p_err:
+            logger.warning(f"Could not load principles from DB: {p_err}. Using default principles.")
+            principles = DEFAULT_PRINCIPLES
+
         evaluation_report = evaluate_principles(metrics_dict, principles)
 
         ai_report_dict = generate_research_report(

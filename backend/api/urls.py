@@ -27,13 +27,19 @@ from .views import (
 )
 
 urlpatterns = [
-    # Core Quantitative
+    # Core Quantitative (both with and without trailing slash)
     path('company/<str:ticker>', CompanyDetailView.as_view(), name='company-detail'),
+    path('company/<str:ticker>/', CompanyDetailView.as_view(), name='company-detail-slash'),
     path('principles', PrincipleListView.as_view(), name='principles-list'),
+    path('principles/', PrincipleListView.as_view(), name='principles-list-slash'),
     path('principles/<str:identifier>', PrincipleDetailView.as_view(), name='principle-detail'),
+    path('principles/<str:identifier>/', PrincipleDetailView.as_view(), name='principle-detail-slash'),
     path('analyze', AnalyzeView.as_view(), name='analyze'),
+    path('analyze/', AnalyzeView.as_view(), name='analyze-slash'),
     path('ask', AskView.as_view(), name='ask'),
+    path('ask/', AskView.as_view(), name='ask-slash'),
     path('compare', CompareView.as_view(), name='compare'),
+    path('compare/', CompareView.as_view(), name='compare-slash'),
 
     # User Dashboard & Watchlist (Prompt 6)
     path('dashboard', UserDashboardView.as_view(), name='user-dashboard'),

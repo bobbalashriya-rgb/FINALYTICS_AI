@@ -1,0 +1,12 @@
+# Python caches
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+htmlcov
+tests.py
+*.log
+db.sqlite3
+private_reports
+*.pdf
+media

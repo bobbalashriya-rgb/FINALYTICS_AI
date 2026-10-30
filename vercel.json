@@ -1,18 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
-    "app": {
-      "root": ".",
-      "framework": "django",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "wisprflow",
-          "format": "url",
-          "env": "WISPRFLOW_URL"
-        }
-      ]
-    },
     "backend": {
       "root": "backend",
       "framework": "django",

@@ -40,22 +40,28 @@ def root_view(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', root_view, name='root'),
 
-    # Quantitative & User Management endpoints (Financial metrics, principles, auth, dashboard, reports, watchlist)
+    # Quantitative & User Management endpoints (both with and without /api/ prefix)
     path('api/', include('api.urls')),
+    path('', include('api.urls')),
 
-    # Core system endpoints (health check, integrations)
+    # Core system endpoints
     path('api/', include('core.urls')),
     path('api/core/', include('core.urls')),
+    path('core/', include('core.urls')),
 
-    # Qualitative fundamental RAG endpoints (MarketPing MCP, filings, chunks, citations)
+    # Qualitative fundamental RAG endpoints
     path('api/companies/', include('companies.urls')),
+    path('companies/', include('companies.urls')),
     path('api/documents/', include('documents.urls')),
+    path('documents/', include('documents.urls')),
     path('api/research/', include('research.urls')),
+    path('research/', include('research.urls')),
 
     # API Documentation (OpenAPI 3 / Swagger / Redoc)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('health', root_view, name='root-health'),
+    path('', root_view, name='root'),
 ]

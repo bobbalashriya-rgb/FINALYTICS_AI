@@ -43,3 +43,6 @@ htmlcov/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Vercel
+.vercel/

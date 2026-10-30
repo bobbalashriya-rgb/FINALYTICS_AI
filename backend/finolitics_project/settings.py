@@ -45,13 +45,22 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+]
+
+try:
+    import whitenoise  # noqa: F401
+    MIDDLEWARE.append('whitenoise.middleware.WhiteNoiseMiddleware')
+except ImportError:
+    pass
+
+MIDDLEWARE.extend([
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+])
 
 ROOT_URLCONF = 'finolitics_project.urls'
 
@@ -78,7 +87,15 @@ ASGI_APPLICATION = 'finolitics_project.asgi.application'
 # PostgreSQL database configuration
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-if 'test' in sys.argv or os.getenv('USE_SQLITE') == '1':
+is_build_or_test = (
+    'test' in sys.argv
+    or 'collectstatic' in sys.argv
+    or any('pytest' in str(arg).lower() for arg in sys.argv)
+    or os.getenv('USE_SQLITE') == '1'
+    or not DATABASE_URL
+)
+
+if is_build_or_test:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -137,6 +154,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Private secure storage for generated PDF reports (never served via public static URL)
 PRIVATE_REPORTS_DIR = BASE_DIR / 'private_reports'

@@ -102,6 +102,8 @@ is_testing = (
     "test" in sys.argv
     or any("pytest" in str(arg).lower() for arg in sys.argv)
     or os.getenv("USE_SQLITE", "").strip().lower() in ("1", "true")
+    or "collectstatic" in sys.argv
+    or not DATABASE_URL
 )
 
 if is_testing:

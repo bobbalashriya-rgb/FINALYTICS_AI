@@ -251,7 +251,7 @@ export default function Dashboard({ externalMode, setExternalMode, resetKey }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in">
                 <AccountSettingsView 
                     onNavigate={(tab) => setExternalMode && setExternalMode(tab)}
-                    onLogoutSuccess={() => setExternalMode && setExternalMode('overview')}
+                    onLogoutSuccess={() => setExternalMode && setExternalMode('account')}
                 />
             </div>
         );

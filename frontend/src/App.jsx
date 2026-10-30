@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, single, compare, report, my-reports, watchlist, history, directory, config, subscription, account
+  const [activeTab, setActiveTab] = useState('account'); // Default landing page set to Sign In / Sign Up ('account')
   const [resetKey, setResetKey] = useState(0);
 
   const handleNav = (tab) => {
@@ -102,7 +102,7 @@ function App() {
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              Account
+              {typeof localStorage !== 'undefined' && localStorage.getItem('finlytics_token') ? 'Account' : 'Sign In'}
             </button>
           </div>
         </div>

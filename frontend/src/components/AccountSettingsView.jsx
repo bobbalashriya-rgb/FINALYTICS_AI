@@ -71,7 +71,8 @@ export default function AccountSettingsView({ onNavigate, onLogoutSuccess }) {
             setTimeout(() => {
                 setLoginSuccess(false);
                 loadUser();
-            }, 400);
+                if (onNavigate) onNavigate('overview');
+            }, 500);
         } catch (err) {
             setLoginError(err.message || 'Login failed. Check credentials.');
         } finally {

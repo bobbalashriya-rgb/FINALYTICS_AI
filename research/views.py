@@ -5,7 +5,11 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from companies.exceptions import CompanyNotFoundError
-from core.integrations.marketping.exceptions import MarketPingConnectionError, MarketPingTimeoutError
+from core.integrations.marketping.exceptions import (
+    MarketPingConnectionError,
+    MarketPingTimeoutError,
+    MarketPingRateLimitError,
+)
 from research.serializers import (
     EvidenceRetrieveRequestSerializer,
     EvidenceRetrieveResponseSerializer,
@@ -91,16 +95,23 @@ class EvidenceRetrievalView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except (MarketPingConnectionError, MarketPingTimeoutError) as exc:
+        except (MarketPingConnectionError, MarketPingTimeoutError, MarketPingRateLimitError) as exc:
+            is_limit = isinstance(exc, MarketPingRateLimitError) or "limit is reached" in str(exc).lower() or "limit_reached" in str(exc).lower()
             return Response(
                 {
                     "success": False,
                     "error": {
-                        "code": "upstream_service_unavailable",
-                        "message": f"MarketPing MCP service unavailable: {str(exc)}",
+                        "code": "upstream_rate_limit_exceeded" if is_limit else "upstream_service_unavailable",
+                        "message": (
+                            "MarketPing daily free MCP limit is reached (resets at midnight IST). "
+                            "Quantitative Deep Dive metrics and ratios remain fully operational."
+                            if is_limit
+                            else f"MarketPing MCP service unavailable: {str(exc)}"
+                        ),
                     },
+                    "limit_reached": is_limit,
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_429_TOO_MANY_REQUESTS if is_limit else status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except ValueError as exc:
             return Response(
@@ -231,16 +242,23 @@ class QualitativeAnalysisView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except (MarketPingConnectionError, MarketPingTimeoutError) as exc:
+        except (MarketPingConnectionError, MarketPingTimeoutError, MarketPingRateLimitError) as exc:
+            is_limit = isinstance(exc, MarketPingRateLimitError) or "limit is reached" in str(exc).lower() or "limit_reached" in str(exc).lower()
             return Response(
                 {
                     "success": False,
                     "error": {
-                        "code": "upstream_service_unavailable",
-                        "message": f"MarketPing MCP service unavailable: {str(exc)}",
+                        "code": "upstream_rate_limit_exceeded" if is_limit else "upstream_service_unavailable",
+                        "message": (
+                            "MarketPing daily free MCP limit is reached (resets at midnight IST). "
+                            "Quantitative Deep Dive metrics and ratios remain fully operational."
+                            if is_limit
+                            else f"MarketPing MCP service unavailable: {str(exc)}"
+                        ),
                     },
+                    "limit_reached": is_limit,
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_429_TOO_MANY_REQUESTS if is_limit else status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except ValueError as exc:
             return Response(
@@ -395,16 +413,23 @@ class ResearchEvaluationView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except (MarketPingConnectionError, MarketPingTimeoutError) as exc:
+        except (MarketPingConnectionError, MarketPingTimeoutError, MarketPingRateLimitError) as exc:
+            is_limit = isinstance(exc, MarketPingRateLimitError) or "limit is reached" in str(exc).lower() or "limit_reached" in str(exc).lower()
             return Response(
                 {
                     "success": False,
                     "error": {
-                        "code": "upstream_service_unavailable",
-                        "message": f"MarketPing MCP service unavailable: {str(exc)}",
+                        "code": "upstream_rate_limit_exceeded" if is_limit else "upstream_service_unavailable",
+                        "message": (
+                            "MarketPing daily free MCP limit is reached (resets at midnight IST). "
+                            "Quantitative Deep Dive metrics and ratios remain fully operational."
+                            if is_limit
+                            else f"MarketPing MCP service unavailable: {str(exc)}"
+                        ),
                     },
+                    "limit_reached": is_limit,
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_429_TOO_MANY_REQUESTS if is_limit else status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except ValueError as exc:
             return Response(

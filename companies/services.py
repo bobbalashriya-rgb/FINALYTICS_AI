@@ -26,6 +26,10 @@ class CompanyService:
         if not clean_query:
             raise CompanyNotFoundError("A company ticker or name must be provided.")
 
+        # Normalize exchange suffixes (e.g. PERSISTENT.NS -> PERSISTENT, LT.BO -> LT)
+        if clean_query.upper().endswith(('.NS', '.BO')):
+            clean_query = clean_query[:-3].strip()
+
         # 1. Check local database first if refresh is not forced
         if not force_refresh:
             existing = (
@@ -37,7 +41,39 @@ class CompanyService:
 
         # 2. Resolve via provider
         logger.info("Resolving company candidate via provider for query: %s", clean_query)
-        matches = self.provider.resolve_company(clean_query)
+        matches = None
+        upstream_error = None
+        try:
+            matches = self.provider.resolve_company(clean_query)
+        except Exception as exc:
+            upstream_error = exc
+            logger.warning(
+                "Upstream provider resolve_company failed for '%s' (%s). Resolving via local profile fallback.",
+                clean_query,
+                exc,
+            )
+
+        if upstream_error is not None:
+            # Upstream provider failed due to rate limit, quota, or network
+            # Resolve via local profile fallback
+            name = clean_query.upper()
+            try:
+                from api.services.company_data import fetch_company_data
+                cdata = fetch_company_data(clean_query)
+                if cdata and cdata.profile and cdata.profile.name:
+                    name = cdata.profile.name
+            except Exception as e:
+                logger.debug("Local company data fetch failed for %s: %s", clean_query, e)
+
+            # Create or return the company record
+            company, _ = Company.objects.get_or_create(
+                ticker=clean_query.upper(),
+                defaults={
+                    "slug": clean_query.lower(),
+                    "name": name,
+                },
+            )
+            return company
 
         if not matches or not isinstance(matches, list) or len(matches) == 0:
             raise CompanyNotFoundError(
@@ -69,9 +105,15 @@ class CompanyService:
         name = best_candidate.get("name") or ticker
 
         if not slug or not ticker:
-            raise CompanyNotFoundError(
-                f"Resolved candidate for '{clean_query}' missing valid slug or ticker."
+            # Fallback instead of failing
+            company, _ = Company.objects.get_or_create(
+                ticker=clean_query.upper(),
+                defaults={
+                    "slug": clean_query.lower(),
+                    "name": clean_query.upper(),
+                },
             )
+            return company
 
         # 4. Save or update company in persistent PostgreSQL storage
         company, _ = Company.objects.update_or_create(

@@ -164,6 +164,15 @@ class QualitativeAnalysisService:
         for cid in sorted(list(cited_chunk_ids)):
             c_data = chunks_by_id.get(cid)
             if c_data:
+                p_start = c_data.get("page_start")
+                p_end = c_data.get("page_end")
+                if p_start is not None and p_end is not None:
+                    page_range = f"pp. {p_start}-{p_end}" if p_start != p_end else f"p. {p_start}"
+                elif p_start is not None:
+                    page_range = f"p. {p_start}"
+                else:
+                    page_range = "N/A"
+
                 citations_list.append(
                     {
                         "chunk_id": cid,
@@ -171,8 +180,9 @@ class QualitativeAnalysisService:
                         "document_title": c_data["document_title"],
                         "document_type": c_data["document_type"],
                         "fiscal_period": c_data["fiscal_period"],
-                        "page_start": c_data["page_start"],
-                        "page_end": c_data["page_end"],
+                        "page_start": p_start,
+                        "page_end": p_end,
+                        "page_range": page_range,
                         "section_heading": c_data["section_heading"],
                         "source_reference": c_data.get("source_reference"),
                     }

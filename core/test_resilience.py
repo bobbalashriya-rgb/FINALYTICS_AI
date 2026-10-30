@@ -19,7 +19,6 @@ def test_mcp_client_permission_denied_for_write_tool():
     assert "not in the allowed read-only tools whitelist" in str(exc_info.value)
 
 
-@pytest.mark.django_db
 def test_mcp_client_timeout_handling():
     """Verify timeout triggers MarketPingTimeoutError with retry attempts."""
     client = MarketPingClient(timeout_seconds=0.05, max_retries=1)
@@ -34,7 +33,6 @@ def test_mcp_client_timeout_handling():
     assert "timed out after 0.05s" in str(exc_info.value)
 
 
-@pytest.mark.django_db
 def test_mcp_client_rate_limit_detection():
     """Verify HTTP 429 / Rate Limit error is detected and raised as MarketPingRateLimitError."""
     client = MarketPingClient(max_retries=0)
@@ -48,7 +46,6 @@ def test_mcp_client_rate_limit_detection():
     assert "rate limit reached (429)" in str(exc_info.value)
 
 
-@pytest.mark.django_db
 def test_mcp_client_connection_error():
     """Verify network connection failures trigger MarketPingConnectionError."""
     client = MarketPingClient(max_retries=0)

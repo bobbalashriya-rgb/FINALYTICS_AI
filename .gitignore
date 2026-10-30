@@ -11,6 +11,12 @@ env/
 ENV/
 .venv/
 
+# Node.js & Frontend
+node_modules/
+dist/
+build/
+.next/
+
 # Environment Variables
 .env
 .env.local
@@ -22,6 +28,8 @@ db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+private_reports/
+*.pdf
 
 # Testing & Coverage
 .pytest_cache/

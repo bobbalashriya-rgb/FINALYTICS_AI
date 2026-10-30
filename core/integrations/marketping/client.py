@@ -85,18 +85,32 @@ class MarketPingClient:
                     "MarketPing timeout on attempt %d: %s", attempt, exc
                 )
             except Exception as exc:
-                err_str = str(exc).lower()
-                if "429" in err_str or "rate limit" in err_str or "too many requests" in err_str:
+                actual_exc = exc
+                while hasattr(actual_exc, "exceptions") and actual_exc.exceptions:
+                    actual_exc = actual_exc.exceptions[0]
+                if isinstance(actual_exc, MarketPingRateLimitError):
+                    logger.warning("MarketPing rate limit reached: %s", actual_exc)
+                    raise actual_exc
+                err_str = str(actual_exc).lower()
+                if (
+                    "429" in err_str
+                    or "rate limit" in err_str
+                    or "too many requests" in err_str
+                    or "limit is reached" in err_str
+                    or "limit_reached" in err_str
+                    or "daily mcp limit" in err_str
+                ):
                     last_exception = MarketPingRateLimitError(
-                        f"MarketPing MCP rate limit reached (429): {exc}"
+                        f"MarketPing MCP rate limit reached (429): {actual_exc}"
                     )
-                    logger.warning("MarketPing rate limit on attempt %d: %s", attempt, exc)
+                    logger.warning("MarketPing rate limit reached (not retrying): %s", actual_exc)
+                    raise last_exception
                 else:
                     last_exception = MarketPingConnectionError(
-                        f"MarketPing MCP connection failed: {exc}"
+                        f"MarketPing MCP connection failed: {actual_exc}"
                     )
                     logger.warning(
-                        "MarketPing connection error on attempt %d: %s", attempt, exc
+                        "MarketPing connection error on attempt %d: %s", attempt, actual_exc
                     )
 
             if attempt <= self.max_retries:
@@ -168,8 +182,20 @@ class MarketPingClient:
                     await session.initialize()
                     result = await session.call_tool(tool_name, arguments)
                     if result.is_error:
+                        err_text = ""
+                        for item in (result.content or []):
+                            err_text += getattr(item, "text", str(item)) + " "
+                        err_text = err_text.strip()
+                        if (
+                            "limit is reached" in err_text.lower()
+                            or "limit_reached" in err_text.lower()
+                            or "daily mcp limit" in err_text.lower()
+                        ):
+                            raise MarketPingRateLimitError(
+                                f"MarketPing daily limit reached: {err_text}"
+                            )
                         raise MarketPingToolError(
-                            f"Tool '{tool_name}' returned error: {result.content}"
+                            f"Tool '{tool_name}' returned error: {err_text or result.content}"
                         )
                     # Extract contents
                     content_list = []

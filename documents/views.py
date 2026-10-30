@@ -1,4 +1,5 @@
 import logging
+import re
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,7 +20,11 @@ from documents.serializers import (
     DocumentIndexRequestSerializer,
     DocumentIndexResponseSerializer,
 )
-from core.integrations.marketping.exceptions import MarketPingConnectionError, MarketPingTimeoutError
+from core.integrations.marketping.exceptions import (
+    MarketPingConnectionError,
+    MarketPingTimeoutError,
+    MarketPingRateLimitError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +115,12 @@ class CompanyAvailableDocumentsView(APIView):
         company_service = CompanyService()
         doc_service = DocumentDiscoveryService()
 
+        # Clean exchange suffixes (e.g., PERSISTENT.NS -> PERSISTENT)
+        clean_ticker = re.sub(r'\.(NS|BO)$', '', ticker.strip(), flags=re.IGNORECASE)
+
         # 1. Resolve company
         try:
-            company = company_service.get_or_resolve_company(query=ticker)
+            company = company_service.get_or_resolve_company(query=clean_ticker)
         except CompanyNotFoundError as exc:
             return Response(
                 {
@@ -153,8 +161,49 @@ class CompanyAvailableDocumentsView(APIView):
             )
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        except (MarketPingConnectionError, MarketPingTimeoutError) as exc:
-            logger.error("MarketPing document discovery error for %s: %s", ticker, exc)
+        except (MarketPingConnectionError, MarketPingTimeoutError, MarketPingRateLimitError) as exc:
+            logger.warning("MarketPing document discovery notice for %s: %s", clean_ticker, exc)
+            fallback_qs = FinancialDocument.objects.filter(company=company)
+            if doc_type:
+                fallback_qs = fallback_qs.filter(doc_type=doc_type)
+            if fallback_qs.exists():
+                logger.info("Falling back to %d cached local documents for %s", fallback_qs.count(), clean_ticker)
+                total_count = fallback_qs.count()
+                paginated_docs = fallback_qs[offset : offset + limit]
+                serializer = AvailableDocumentsResponseSerializer(
+                    {
+                        "company": company,
+                        "total": total_count,
+                        "results": paginated_docs,
+                    }
+                )
+                resp_data = serializer.data
+                resp_data["warning"] = "MarketPing daily limit reached or upstream offline. Showing locally cached documents."
+                resp_data["limit_reached"] = isinstance(exc, MarketPingRateLimitError) or "limit is reached" in str(exc).lower()
+                return Response(resp_data, status=status.HTTP_200_OK)
+
+            is_limit = (
+                isinstance(exc, MarketPingRateLimitError)
+                or "limit is reached" in str(exc).lower()
+                or "daily mcp limit" in str(exc).lower()
+                or "limit_reached" in str(exc).lower()
+            )
+            if is_limit:
+                return Response(
+                    {
+                        "company": {
+                            "ticker": company.ticker,
+                            "name": company.name,
+                            "slug": company.slug,
+                        },
+                        "total": 0,
+                        "results": [],
+                        "warning": "MarketPing's daily free MCP limit is reached (resets at midnight IST). Local quantitative deep dive and metrics remain fully operational.",
+                        "limit_reached": True,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             return Response(
                 {
                     "success": False,
@@ -274,17 +323,28 @@ class DocumentIngestionView(APIView):
             )
             return Response(result, status=status.HTTP_200_OK)
 
-        except (MarketPingConnectionError, MarketPingTimeoutError) as exc:
-            logger.error("MarketPing ingestion error for doc %s: %s", document_id, exc)
+        except (MarketPingConnectionError, MarketPingTimeoutError, MarketPingRateLimitError) as exc:
+            logger.warning("MarketPing ingestion notice for doc %s: %s", document_id, exc)
+            is_limit = (
+                isinstance(exc, MarketPingRateLimitError)
+                or "limit is reached" in str(exc).lower()
+                or "daily mcp limit" in str(exc).lower()
+                or "limit_reached" in str(exc).lower()
+            )
             return Response(
                 {
                     "success": False,
                     "error": {
-                        "code": "upstream_service_error",
-                        "message": f"Failed to retrieve pages from MarketPing MCP: {exc}",
+                        "code": "upstream_rate_limit_exceeded" if is_limit else "upstream_service_error",
+                        "message": (
+                            "MarketPing's daily free MCP limit is reached (635 of 600 document pages used today). It resets at midnight IST. Paid MarketPing plans raise it — Investor 3,000 a day, Trader 6,000 a day."
+                            if is_limit
+                            else f"Failed to retrieve pages from MarketPing MCP: {exc}"
+                        ),
                     },
+                    "limit_reached": is_limit,
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status=status.HTTP_429_TOO_MANY_REQUESTS if is_limit else status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as exc:
             logger.exception("Unexpected error during document ingestion for %s: %s", document_id, exc)

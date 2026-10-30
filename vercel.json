@@ -1,13 +1,51 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "buildCommand": "npm --prefix frontend run build",
-  "installCommand": "npm --prefix frontend install",
-  "outputDirectory": "frontend/dist",
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "django",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "wisprflow",
+          "format": "url",
+          "env": "WISPRFLOW_URL"
+        }
+      ]
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "django",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "wisprflow",
+          "format": "url",
+          "env": "WISPRFLOW_URL"
+        }
+      ]
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    },
+    "wisprflow": {
+      "root": "wisprflow",
+      "framework": "fastapi"
+    }
+  },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
